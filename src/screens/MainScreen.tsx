@@ -1,56 +1,8 @@
 import React, {useState, useEffect} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-  Switch,
-  Pressable,
-} from 'react-native';
+import {ScrollView, StyleSheet, Text, View, Pressable} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Header from '../components/Header';
 import AlarmModal from '../components/AlarmModal';
-
-const DATA = [
-  {
-    id: 1,
-    gameName: 'ESO',
-    alarms: [
-      {
-        name: 'horse',
-        time: 777600000, // 9d
-        endDateTime: 1671840000000, //'2022-12-24T09:00:00'
-        isDone: false,
-      },
-      {
-        name: 'research',
-        time: 691200000, // 8d
-        endDateTime: 1671608400000, //'2022-12-21T16:40:00'
-        isDone: false,
-      },
-      {
-        name: 'cotton',
-        time: 108000000, // 30h
-        endDateTime: 1671172857000, //2022-12-16T15:40:57
-        isDone: false,
-      },
-    ],
-  },
-  {
-    id: 2,
-    gameName: 'Black Desert',
-    alarms: [
-      {
-        name: 'cooking',
-        time: 23400000, // 6h 30m
-        endDateTime: 1671161400000, // 2022-12-16T12:30:00
-        isDone: false,
-      },
-    ],
-  },
-];
 
 const getDateFromMs = (milliSecond: number) => {
   let ms = milliSecond;
@@ -58,7 +10,7 @@ const getDateFromMs = (milliSecond: number) => {
   ms = ms - day * 1000 * 60 * 60 * 24;
   const hour = Math.floor(ms / (1000 * 60 * 60));
   ms = ms - hour * 1000 * 60 * 60;
-  const min = Math.floor(ms / (1000 * 60));
+  const min = Math.ceil(ms / (1000 * 60));
 
   // const remainingTime = day === 0 ? `${hour}h ${min}m` : `${day}d ${hour}h`;
   return `${day}d ${hour}h ${min}m`;
@@ -76,30 +28,39 @@ const getDiffTime = (endTime: number, entireTime: number) => {
 };
 
 function MainScreen() {
+  const [mainData, setMainData] = useState<any>([]);
   const [isVisible, setIsVisible] = useState<boolean>(false);
   const [category, setCategory] = useState('');
+
+  useEffect(() => {
+    AsyncStorage.getItem('mainData').then(value => {
+      setMainData(JSON.parse(value || '[]'));
+    });
+  }, []);
 
   const onPressModal = (text: string) => {
     setCategory(text);
     setIsVisible(true);
   };
 
+  console.log(JSON.stringify(mainData));
+
   return (
     <>
       <Header />
       <ScrollView style={styles.container}>
-        {DATA.map(v => (
+        {mainData.map(v => (
           <View key={v.id} style={styles.wrapper}>
             <View style={styles.titleBox}>
-              <Text style={styles.title}>{v.gameName}</Text>
-              <Pressable onPress={() => onPressModal(v.gameName)}>
+              <Text style={styles.title}>{v.sectionName}</Text>
+              <Pressable onPress={() => onPressModal(v.sectionName)}>
                 <Text>+</Text>
               </Pressable>
             </View>
             {v.alarms.map((alarm, i) => {
               const {per, entireTime, remainingTime} = getDiffTime(
                 alarm.endDateTime,
-                alarm.time,
+                alarm.duration,
               );
               return (
                 <View key={i} style={styles.alarmBox}>
@@ -122,15 +83,27 @@ function MainScreen() {
           </View>
         ))}
         <Pressable onPress={() => onPressModal('')}>
-          <View style={styles.newGame}>
-            <Text>new+</Text>
+          <View style={styles.newSection}>
+            <Text style={{fontSize: 20}}>new+</Text>
           </View>
         </Pressable>
+        <View style={styles.manageData}>
+          <Pressable
+            onPress={() => {
+              AsyncStorage.removeItem('mainData').then(() => {
+                setMainData([]);
+              });
+            }}>
+            <Text>테스트용: delData</Text>
+          </Pressable>
+        </View>
       </ScrollView>
       <AlarmModal
         isVisible={isVisible}
         setIsVisible={setIsVisible}
         existingCategory={category}
+        mainData={mainData}
+        setMainData={setMainData}
       />
     </>
   );
@@ -193,18 +166,19 @@ const styles = StyleSheet.create({
   alarmBox: {
     padding: 10,
   },
-  newGame: {
+  newSection: {
     borderColor: 'gray',
     borderStyle: 'solid',
     borderWidth: 1,
     borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 40,
+    padding: 70,
     margin: 24,
   },
   manageData: {
     flexDirection: 'row',
+    padding: 20,
   },
 });
 

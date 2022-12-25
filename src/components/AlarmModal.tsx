@@ -11,17 +11,22 @@ import {
   TextInput,
   Dimensions,
 } from 'react-native';
+import {setStorageData, addSection, addName} from '../utils';
 
 interface AlarmModal {
   existingCategory: string;
   isVisible: boolean;
   setIsVisible: (isVisible: boolean) => void;
+  mainData: any;
+  setMainData: (mainData: any) => void;
 }
 
 const AlarmModal = ({
   existingCategory = '',
   isVisible,
   setIsVisible,
+  mainData,
+  setMainData,
 }: AlarmModal) => {
   const [category, setCategory] = useState('');
   const [name, setName] = useState('');
@@ -55,15 +60,27 @@ const AlarmModal = ({
       return;
     }
     const inputData = {
-      gameName: category,
-      text: name,
+      existingData: mainData,
+      sectionName: category || existingCategory,
+      name: name,
       day: d,
       hour: h,
       min: m,
     };
-    console.log(inputData);
+
+    if (existingCategory) {
+      const newData = addName(inputData);
+      setStorageData(newData);
+      setMainData(newData);
+    } else {
+      const newData = addSection(inputData);
+      setStorageData(newData);
+      setMainData(newData);
+    }
+
     onClose();
   };
+
   return (
     <Modal
       animationType="slide"
@@ -146,8 +163,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   backgroundBox: {
-    // backgroundColor: 'black',
-    // opacity: 0.5,
+    backgroundColor: 'white',
+    opacity: 0.5,
     height: 20,
   },
   pressable: {
@@ -156,7 +173,6 @@ const styles = StyleSheet.create({
   contentBox: {
     backgroundColor: '#fff',
     flex: 1,
-    // marginTop: 20,
     borderTopColor: 'gray',
     borderStyle: 'solid',
     borderTopWidth: 1,
