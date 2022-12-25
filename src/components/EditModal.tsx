@@ -11,27 +11,43 @@ import {
   TextInput,
 } from 'react-native';
 import {WebView} from 'react-native-webview';
-import {setStorageData, addSection, addName, getSelectHtml} from '../utils';
+import {setStorageData, updateNoti, delNoti, getSelectHtml} from '../utils';
 
-interface AlarmModal {
-  selectedGame: string;
+interface EditModal {
   isVisible: boolean;
   setIsVisible: (isVisible: boolean) => void;
   mainData: any;
   setMainData: (mainData: any) => void;
+  gameIndex: number;
+  notiIndex: number;
 }
 
-const AlarmModal = ({
-  selectedGame = '',
+const getDateFromMs = (milliSecond: number) => {
+  let ms = milliSecond;
+  const day = Math.floor(ms / (1000 * 60 * 60 * 24));
+  ms = ms - day * 1000 * 60 * 60 * 24;
+  const hour = Math.floor(ms / (1000 * 60 * 60));
+  ms = ms - hour * 1000 * 60 * 60;
+  const min = Math.ceil(ms / (1000 * 60));
+
+  return {
+    d: day,
+    h: hour,
+    m: min,
+  };
+};
+
+const EditModal = ({
   isVisible,
   setIsVisible,
   mainData,
   setMainData,
-}: AlarmModal) => {
+  gameIndex,
+  notiIndex,
+}: EditModal) => {
   const inRef = useRef(0);
   const outRef = useRef(0);
   const [isKeyboard, setIsKeyboard] = useState(false);
-  const [category, setCategory] = useState('');
   const [name, setName] = useState('');
   const [day, setDay] = useState('00');
   const [hour, setHour] = useState('00');
@@ -51,20 +67,40 @@ const AlarmModal = ({
     };
   }, []);
 
+  useEffect(() => {
+    if (mainData.length === 0) {
+      return;
+    }
+    if (!mainData[gameIndex]?.notis[notiIndex]) {
+      return;
+    }
+    const {d, h, m} = getDateFromMs(
+      mainData[gameIndex].notis[notiIndex].duration,
+    );
+
+    setName(mainData[gameIndex].notis[notiIndex].name);
+    setDay(d.toString().padStart(2, '0'));
+    setHour(h.toString().padStart(2, '0'));
+    setMin(m.toString().padStart(2, '0'));
+  }, [gameIndex, notiIndex, mainData]);
+
   const onClose = () => {
-    setCategory('');
-    setName('');
-    setDay('00');
-    setHour('00');
-    setMin('00');
     setIsVisible(!isVisible);
   };
 
-  const onSubmit = async () => {
-    if (!category.trim() && !selectedGame) {
-      Alert.alert('게임이름을 입력해주세요');
-      return;
-    }
+  const onDelete = () => {
+    const inputData = {
+      existingData: mainData,
+      gameIndex,
+      notiIndex,
+    };
+    const newData = delNoti(inputData);
+    setStorageData(newData);
+    setMainData(newData);
+    onClose();
+  };
+
+  const onUpdate = () => {
     if (!name.trim()) {
       Alert.alert('name 입력해주세요');
       return;
@@ -75,22 +111,18 @@ const AlarmModal = ({
     }
     const inputData = {
       existingData: mainData,
-      game: category || selectedGame,
       name: name,
+      gameIndex,
+      notiIndex,
       day: parseInt(day, 10),
       hour: parseInt(hour, 10),
       min: parseInt(min, 10),
     };
 
-    if (selectedGame) {
-      const newData = await addName(inputData);
-      setStorageData(newData);
-      setMainData(newData);
-    } else {
-      const newData = await addSection(inputData);
-      setStorageData(newData);
-      setMainData(newData);
-    }
+    const newData = updateNoti(inputData);
+    setStorageData(newData);
+    setMainData(newData);
+
     onClose();
   };
 
@@ -124,21 +156,12 @@ const AlarmModal = ({
                 onClose();
               }
             }}>
-            {selectedGame ? (
-              <Text>{selectedGame}</Text>
-            ) : (
-              <TextInput
-                style={styles.textInput}
-                onChangeText={setCategory}
-                value={category}
-                placeholder="게임 이름"
-              />
-            )}
+            <Text>{mainData[gameIndex]?.sectionName}</Text>
             <TextInput
               style={styles.textInput}
               onChangeText={setName}
               value={name}
-              placeholder="알림 이름"
+              placeholder="name"
             />
             <View style={styles.timeSelectBox}>
               <View style={styles.timeSelect}>
@@ -174,8 +197,11 @@ const AlarmModal = ({
             </View>
           </Pressable>
         </View>
-        <Pressable onPress={onSubmit}>
-          <Text style={styles.submit}>등록</Text>
+        <Pressable onPress={onDelete}>
+          <Text style={styles.submit}>삭제하기</Text>
+        </Pressable>
+        <Pressable onPress={onUpdate}>
+          <Text style={styles.submit}>수정하기</Text>
         </Pressable>
       </SafeAreaView>
     </Modal>
@@ -251,4 +277,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AlarmModal;
+export default EditModal;

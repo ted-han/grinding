@@ -1,14 +1,18 @@
 import React, {useRef} from 'react';
 import {Animated, StyleSheet, Image, View, Pressable} from 'react-native';
 
-const Header = () => {
+interface Header {
+  onRefresh: (time: number) => void;
+}
+
+const Header = ({onRefresh}: Header) => {
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
   const onPressInfo = () => {
     console.log('info');
   };
   const onPressRefresh = () => {
-    console.log('refresh');
+    onRefresh((prev: number) => prev + 1);
 
     Animated.timing(rotateAnim, {
       toValue: 1,
